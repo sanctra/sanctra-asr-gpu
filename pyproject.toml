@@ -1,0 +1,20 @@
+﻿[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "sanctra-asr-gpu"
+version = "0.1.0"
+description = "GPU Whisper large-v3 streaming ASR over WebSocket."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "fastapi>=0.112.0",
+  "uvicorn[standard]>=0.30.0",
+  "faster-whisper>=1.0.0",
+  "websockets>=12.0",
+  "numpy>=1.26.0"
+]
+
+[tool.ruff]
+line-length = 100
