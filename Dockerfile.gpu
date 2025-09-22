@@ -16,4 +16,4 @@ RUN pip install --no-cache-dir faster-whisper websockets uvicorn fastapi numpy
 WORKDIR /srv
 COPY server ./server
 EXPOSE 9000
-CMD [""python3"", ""server/main.py""]
+CMD ["python3", "server/main.py"]

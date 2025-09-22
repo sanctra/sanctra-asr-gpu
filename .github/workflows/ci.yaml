@@ -1,21 +1,36 @@
 ﻿name: CI
-on: [push, pull_request]
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
+    concurrency:
+      group: asr-gpu-${{ github.ref }}
+      cancel-in-progress: true
     steps:
       - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/login-action@v3
+
+      - id: auth
+        uses: google-github-actions/auth@v2
         with:
-          registry: us-central1-docker.pkg.dev
-          username: _json_key
-          password: ${{ secrets.GAR_JSON_KEY }}
-      - name: Build and push image
+          workload_identity_provider: projects/${{ secrets.GCP_PROJECT_NUMBER }}/locations/global/workloadIdentityPools/github-pool/providers/github
+          service_account: github-ci@sanctra.iam.gserviceaccount.com
+
+      - uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: sanctra
+
+      - run: gcloud --quiet auth configure-docker us-central1-docker.pkg.dev
+
+      - name: Build and push GPU image
         run: |
-          IMAGE=us-central1-docker.pkg.dev/sanctra-prod/sanctra-docker/sanctra-asr-gpu:${{ github.sha }}
+          IMAGE=us-central1-docker.pkg.dev/sanctra/sanctra-docker/sanctra-asr-gpu:${{ github.sha }}
           docker build -f Dockerfile.gpu -t $IMAGE .
           docker push $IMAGE

@@ -1,5 +1,6 @@
 ﻿import asyncio, json, logging, os, signal
 import websockets
+from aiohttp import web
 from websockets.server import WebSocketServerProtocol
 from faster_whisper import WhisperModel
 from server.transcribe import transcribe_pcm
@@ -18,6 +19,18 @@ CHUNK_S = float(os.getenv("ASR_CHUNK_SECONDS","5.0"))
 RATE = int(os.getenv("ASR_SAMPLE_RATE","48000"))
 
 model = WhisperModel(MODEL_SIZE, device="cuda", compute_type="float16")
+logger = logging.getLogger("asr")
+
+async def _healthz(request):
+    return web.Response(text="ok")
+
+async def _start_health_server(host: str, port: int):
+    app = web.Application()
+    app.add_routes([web.get("/healthz", _healthz)])
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, host, port)
+    await site.start()
 
 async def consumer(ws: WebSocketServerProtocol):
   buf = bytearray()
@@ -58,6 +71,10 @@ async def handler(ws: WebSocketServerProtocol):
 async def main():
   stop = asyncio.Future()
   loop = asyncio.get_running_loop()
+  # inside async def main():
+  HOST = "0.0.0.0"; PORT = int(os.getenv("PORT","9000"))
+  HEALTH_PORT = int(os.getenv("HEALTH_PORT","9001"))
+  await _start_health_server(HOST, HEALTH_PORT)
   for s in (signal.SIGINT, signal.SIGTERM):
     loop.add_signal_handler(s, stop.cancel)
   async with websockets.serve(handler, HOST, PORT, compression=None, max_size=2**24):
